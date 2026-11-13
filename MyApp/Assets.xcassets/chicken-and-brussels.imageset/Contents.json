@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "filename": "chicken-and-brussels.jpg",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}
