@@ -146,23 +146,33 @@ struct HomeView: View {
         }
     }
 
-    // Today's vote on top, then the days before it. Tap one to open it on the Vote tab.
+    // Today's vote as its own card with photos of the choices, then past results below
     private var voteSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let polls = store.recentPolls
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Votes")
                 .font(.title3.bold())
 
+            if let today = polls.first {
+                Button {
+                    openVote(today)
+                } label: {
+                    todayVoteCard(today)
+                }
+                .buttonStyle(.plain)
+            }
+
             VStack(spacing: 0) {
-                ForEach(store.recentPolls) { poll in
-                    if poll.id != store.recentPolls.first?.id {
+                ForEach(polls.dropFirst()) { poll in
+                    if poll.id != polls.dropFirst().first?.id {
                         Divider()
                             .padding(.leading, 72)
                     }
                     Button {
-                        store.selectedVoteDate = poll.date
-                        store.selectedTab = .vote
+                        openVote(poll)
                     } label: {
-                        voteRow(poll)
+                        resultRow(poll)
                     }
                     .buttonStyle(.plain)
                 }
@@ -171,31 +181,84 @@ struct HomeView: View {
         }
     }
 
-    private func voteRow(_ poll: DayPoll) -> some View {
-        HStack(spacing: 0) {
-            Text(poll.date.formatted(.dateTime.weekday(.abbreviated)).uppercased())
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 56, alignment: .leading)
-            Text(poll.summaryText)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(poll.myVoteID == nil && poll.isOpen ? .secondary : .primary)
-            Spacer()
-            if poll.isOpen {
-                Text(poll.myVoteID == nil ? "Vote" : "Voted")
-                    .font(.caption.weight(.semibold))
+    private func openVote(_ poll: DayPoll) {
+        store.selectedVoteDate = poll.date
+        store.selectedTab = .vote
+    }
+
+    // Deadline on top, a small photo of each choice, then what you picked
+    private func todayVoteCard(_ poll: DayPoll) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(Calendar.current.isDateInToday(poll.date) ? "Today's vote" : "Next vote")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.tint)
-            } else if poll.myVoteID != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.tint)
-            } else if !poll.isUpcoming {
-                Text("Closed")
-                    .font(.caption)
+                Spacer()
+                Label(poll.deadlineText, systemImage: "clock")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                ForEach(poll.options) { option in
+                    VStack(spacing: 4) {
+                        FoodPhoto(option.name, height: 64, cornerRadius: 10)
+                            .overlay(alignment: .topTrailing) {
+                                if option.id == poll.myVoteID {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.white, Color.accentColor)
+                                        .padding(4)
+                                }
+                            }
+                        Text(option.name)
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+            }
+
+            HStack {
+                Text(poll.myVote.map { "You picked \($0.name)" } ?? (poll.isOpen ? "Tap to pick your favorite" : poll.summaryText))
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // Photo of the winning dish, the day, what won and by how much
+    private func resultRow(_ poll: DayPoll) -> some View {
+        HStack(spacing: 12) {
+            if let leader = poll.leader {
+                FoodPhoto(leader.name, height: 44, cornerRadius: 10)
+                    .frame(width: 44)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(poll.date.formatted(.dateTime.weekday(.wide)))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(poll.summaryText)
+                    .font(.subheadline.weight(.medium))
+            }
+            Spacer()
+            if let leader = poll.leader, !poll.isOpen {
+                Text("\(poll.percent(for: leader))%")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.tint)
+            }
+            if poll.myVoteID != nil {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.tint)
+            }
+        }
         .padding(.horizontal)
-        .padding(.vertical, 16)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
     }
 

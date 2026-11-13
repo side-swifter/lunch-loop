@@ -26,6 +26,8 @@ import SwiftUI
                 }
             }
             .environment(store)
+            // Always light mode, even if the phone is set to dark
+            .preferredColorScheme(.light)
             // Start loading during the animation, so the app is ready when you swipe up
             .task {
                 if isSignedIn {

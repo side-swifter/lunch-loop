@@ -117,10 +117,11 @@ struct SplashView: View {
             if showingHint { slideAway() }
         }
         .task {
-            withAnimation(.easeInOut(duration: 1.2)) {
+            // Starts slow, speeds through the middle, then eases into the end
+            withAnimation(.timingCurve(0.7, 0, 0.3, 1, duration: 0.9)) {
                 progress = 1
             }
-            try? await Task.sleep(for: .seconds(1.3))
+            try? await Task.sleep(for: .seconds(1.0))
             onDrawn()
             if waitsForSwipe {
                 withAnimation { showingHint = true }
